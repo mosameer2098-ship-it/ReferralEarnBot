@@ -19,6 +19,7 @@ from handlers.broadcast import broadcast_conversation
 from handlers.admin_user import (
     find_user_conversation,
     show_user_withdrawal_history,
+    show_user_referrals,
     toggle_user_block,
 )
 from handlers.commands import balance_command, referrals_command, referral_command, stats_command, history_command
@@ -84,6 +85,13 @@ def main():
         CallbackQueryHandler(
             show_user_withdrawal_history,
             pattern=r"^admin_user_history:[0-9]+$",
+        )
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(
+            show_user_referrals,
+            pattern=r"^admin_user_referrals:[0-9]+$",
         )
     )
 

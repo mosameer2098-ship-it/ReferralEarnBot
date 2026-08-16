@@ -9,6 +9,7 @@ from telegram.ext import (
 )
 
 from config import ADMIN_ID
+from database.mongodb import users_collection
 from database.users import (
     get_user_by_id,
     is_user_blocked,
@@ -39,6 +40,13 @@ def admin_user_keyboard(user_id=None):
             InlineKeyboardButton(
                 "📜 Withdrawal History",
                 callback_data=f"admin_user_history:{user_id}",
+            )
+        ])
+
+        buttons.append([
+            InlineKeyboardButton(
+                "👥 Referral Details",
+                callback_data=f"admin_user_referrals:{user_id}",
             )
         ])
 
@@ -117,20 +125,62 @@ async def receive_user_id(
 
     if not user:
         await update.message.reply_text(
-            "❌ User Not Found\n\n"
-            f"🆔 User ID: {user_id}\n\n"
+            "❌ <b>User Not Found</b>\n\n"
+            f"🆔 User ID: <code>{user_id}</code>\n\n"
             "This user is not registered in the bot.",
             reply_markup=admin_user_keyboard(user_id),
+            parse_mode="HTML",
         )
         return ConversationHandler.END
 
     username = user.get("username") or "N/A"
     first_name = user.get("first_name") or "N/A"
+
     balance = float(user.get("balance", 0))
     total_earned = float(user.get("total_earned", 0))
     referrals = int(user.get("referral_count", 0))
 
+    status = (
+        "🚫 Blocked"
+        if is_user_blocked(user_id)
+        else "🟢 Active"
+    )
+
+    withdrawals = list(
+        get_user_withdrawals(user_id, limit=100)
+    )
+
+    total_withdrawals = len(withdrawals)
+
+    pending_withdrawals = sum(
+        1 for w in withdrawals
+        if w.get("status") == "pending"
+    )
+
+    approved_withdrawals = sum(
+        1 for w in withdrawals
+        if w.get("status") == "approved"
+    )
+
     created_at = user.get("created_at")
+
+    referred_by = user.get("referred_by")
+
+    if referred_by:
+        referrer = get_user_by_id(referred_by)
+
+        if referrer:
+            ref_username = referrer.get("username")
+            ref_name = referrer.get("first_name") or "N/A"
+
+            if ref_username:
+                referred_by_text = f"@{ref_username} ({referred_by})"
+            else:
+                referred_by_text = f"{ref_name} ({referred_by})"
+        else:
+            referred_by_text = f"User ID {referred_by}"
+    else:
+        referred_by_text = "Direct / None"
 
     if created_at:
         created_text = created_at.strftime(
@@ -140,21 +190,35 @@ async def receive_user_id(
         created_text = "N/A"
 
     text = (
-        "👤 USER DETAILS\n\n"
-        f"🆔 User ID: {user_id}\n"
-        f"👤 Name: {first_name}\n"
-        f"🔹 Username: @{username if username != 'N/A' else 'N/A'}\n\n"
+        "╭━━━━━━━━━━━━━━━━━━━━╮\n"
+        "       👤 <b>USER PROFILE</b>\n"
+        "╰━━━━━━━━━━━━━━━━━━━━╯\n\n"
+
+        f"🆔 <b>User ID:</b> <code>{user_id}</code>\n"
+        f"👤 <b>Name:</b> {first_name}\n"
+        f"🔹 <b>Username:</b> @{username}\n"
+        f"🚦 <b>Status:</b> {status}\n\n"
+
+        "💰 <b>ACCOUNT STATISTICS</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        f"💰 Balance: ₹{balance:g}\n"
-        f"💎 Total Earned: ₹{total_earned:g}\n"
-        f"👥 Referrals: {referrals}\n"
-        f"📅 Joined: {created_text}"
+        f"💵 Balance: <b>₹{balance:g}</b>\n"
+        f"💎 Total Earned: <b>₹{total_earned:g}</b>\n"
+        f"👥 Referrals: <b>{referrals}</b>\n"
+                f"🔗 Referred By: <b>{referred_by_text}</b>\n\n"
+
+        "💸 <b>WITHDRAWAL STATISTICS</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"📋 Total Requests: <b>{total_withdrawals}</b>\n"
+        f"⏳ Pending: <b>{pending_withdrawals}</b>\n"
+        f"✅ Approved: <b>{approved_withdrawals}</b>\n\n"
+
+        f"📅 <b>Joined:</b> {created_text}"
     )
 
     await update.message.reply_text(
         text,
         reply_markup=admin_user_keyboard(user_id),
-        
+        parse_mode="HTML",
     )
 
     return ConversationHandler.END
@@ -286,6 +350,86 @@ async def show_user_withdrawal_history(
             f"🆔 ID: {withdrawal_id}",
             "",
         ])
+
+    await query.edit_message_text(
+        "\n".join(lines),
+        reply_markup=admin_user_keyboard(user_id),
+    )
+
+
+async def show_user_referrals(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    query = update.callback_query
+    await query.answer()
+
+    if query.from_user.id != ADMIN_ID:
+        await query.edit_message_text("❌ You are not authorized.")
+        return
+
+    try:
+        user_id = int(query.data.split(":", 1)[1])
+    except (ValueError, IndexError):
+        await query.edit_message_text("❌ Invalid user ID.")
+        return
+
+    user = get_user_by_id(user_id)
+
+    if not user:
+        await query.edit_message_text("❌ User not found.")
+        return
+
+    referrals = list(
+        users_collection.find(
+            {"referred_by": user_id},
+            {
+                "_id": 0,
+                "user_id": 1,
+                "username": 1,
+                "first_name": 1,
+                "created_at": 1,
+            },
+        ).sort("created_at", -1)
+    )
+
+    lines = [
+        "╭━━━━━━━━━━━━━━━━━━━━╮",
+        "       👥 REFERRAL DETAILS",
+        "╰━━━━━━━━━━━━━━━━━━━━╯",
+        "",
+        f"🆔 User ID: {user_id}",
+        f"👥 Total Referrals: {len(referrals)}",
+        "",
+    ]
+
+    if not referrals:
+        lines.append("📭 No referred users found.")
+    else:
+        lines.extend([
+            "📋 REFERRED USERS",
+            "━━━━━━━━━━━━━━━━━━━━",
+        ])
+
+        for index, referral in enumerate(referrals, 1):
+            referral_id = referral.get("user_id", "N/A")
+            first_name = referral.get("first_name") or "N/A"
+            username = referral.get("username")
+
+            user_text = f"@{username}" if username else first_name
+
+            lines.extend([
+                f"{index}. 👤 {user_text}",
+                f"   🆔 ID: {referral_id}",
+            ])
+
+            created_at = referral.get("created_at")
+            if created_at:
+                lines.append(
+                    f"   📅 Joined: {created_at.strftime('%d %b %Y • %I:%M %p')}"
+                )
+
+            lines.append("")
 
     await query.edit_message_text(
         "\n".join(lines),
