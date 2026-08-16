@@ -1,0 +1,40 @@
+{
+  "name": "ReferralEarnBot",
+  "description": "A Telegram referral and rewards bot with balance management, withdrawals and admin controls.",
+  "repository": "https://github.com/mosameer2098-ship-it/ReferralEarnBot",
+  "keywords": [
+    "telegram-bot",
+    "referral-bot",
+    "python",
+    "mongodb",
+    "heroku"
+  ],
+  "env": {
+    "BOT_TOKEN": {
+      "description": "Telegram Bot Token from @BotFather",
+      "required": true
+    },
+    "MONGO_URI": {
+      "description": "MongoDB connection URI",
+      "required": true
+    },
+    "DATABASE_NAME": {
+      "description": "MongoDB database name",
+      "value": "ReferralEarnBot",
+      "required": true
+    },
+    "ADMIN_ID": {
+      "description": "Telegram User ID of the bot administrator",
+      "required": true
+    },
+    "BOT_USERNAME": {
+      "description": "Telegram bot username without @",
+      "required": true
+    }
+  },
+  "formation": {
+    "worker": {
+      "quantity": 1
+    }
+  }
+}
