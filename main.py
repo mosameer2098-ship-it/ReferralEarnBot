@@ -16,6 +16,7 @@ from handlers.admin_callback import admin_callback
 from handlers.admin_balance import add_balance_conversation
 from handlers.admin_deduct import deduct_balance_conversation
 from handlers.broadcast import broadcast_conversation
+from handlers.commands import balance_command, referrals_command, referral_command, stats_command, history_command
 
 
 logging.basicConfig(
@@ -38,6 +39,26 @@ def main():
 
     application.add_handler(
         CommandHandler("menu", show_menu)
+    )
+
+    application.add_handler(
+        CommandHandler("balance", balance_command)
+    )
+
+    application.add_handler(
+        CommandHandler("referrals", referrals_command)
+    )
+
+    application.add_handler(
+        CommandHandler("referral", referral_command)
+    )
+
+    application.add_handler(
+        CommandHandler("stats", stats_command)
+    )
+
+    application.add_handler(
+        CommandHandler("history", history_command)
     )
 
     application.add_handler(

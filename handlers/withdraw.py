@@ -50,6 +50,53 @@ def withdraw_confirm_keyboard():
     )
 
 
+async def withdraw_command(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    user = get_user(update.effective_user.id)
+
+    if not user:
+        await update.message.reply_text(
+            "❌ Account not found.\n\n"
+            "Please use /start first."
+        )
+        return ConversationHandler.END
+
+    balance = float(user.get("balance", 0))
+
+    if balance < MIN_WITHDRAW:
+        await update.message.reply_text(
+            "💸 *Withdraw*\n\n"
+            f"💰 Your Balance: ₹{balance:g}\n"
+            f"📌 Minimum Withdrawal: ₹{MIN_WITHDRAW:g}\n\n"
+            f"❌ You need at least ₹{MIN_WITHDRAW:g} to withdraw.",
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "🔙 Back to Dashboard",
+                            callback_data="back_dashboard",
+                        )
+                    ]
+                ]
+            ),
+            parse_mode="Markdown",
+        )
+        return ConversationHandler.END
+
+    await update.message.reply_text(
+        "💸 *Withdrawal Request*\n\n"
+        f"💰 Available Balance: ₹{balance:g}\n"
+        f"📌 Minimum: ₹{MIN_WITHDRAW:g}\n\n"
+        "✏️ Enter the amount you want to withdraw:",
+        reply_markup=withdraw_cancel_keyboard(),
+        parse_mode="Markdown",
+    )
+
+    return AMOUNT
+
+
 async def start_withdraw(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
@@ -279,7 +326,11 @@ withdraw_conversation = ConversationHandler(
         CallbackQueryHandler(
             start_withdraw,
             pattern="^withdraw$",
-        )
+        ),
+        CommandHandler(
+            "withdraw",
+            withdraw_command,
+        ),
     ],
     states={
         AMOUNT: [
