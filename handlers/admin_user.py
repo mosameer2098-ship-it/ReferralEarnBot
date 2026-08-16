@@ -9,7 +9,11 @@ from telegram.ext import (
 )
 
 from config import ADMIN_ID
-from database.users import get_user_by_id
+from database.users import (
+    get_user_by_id,
+    is_user_blocked,
+    set_user_blocked,
+)
 from database.withdrawals import get_user_withdrawals
 
 
@@ -37,6 +41,21 @@ def admin_user_keyboard(user_id=None):
                 callback_data=f"admin_user_history:{user_id}",
             )
         ])
+
+        if is_user_blocked(user_id):
+            buttons.append([
+                InlineKeyboardButton(
+                    "✅ Unblock User",
+                    callback_data=f"admin_unblock_user:{user_id}",
+                )
+            ])
+        else:
+            buttons.append([
+                InlineKeyboardButton(
+                    "🚫 Block User",
+                    callback_data=f"admin_block_user:{user_id}",
+                )
+            ])
 
     buttons.append([
         InlineKeyboardButton(
@@ -139,6 +158,58 @@ async def receive_user_id(
     )
 
     return ConversationHandler.END
+
+
+async def toggle_user_block(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    query = update.callback_query
+    await query.answer()
+
+    if query.from_user.id != ADMIN_ID:
+        await query.edit_message_text(
+            "❌ You are not authorized."
+        )
+        return
+
+    try:
+        action, user_id_text = query.data.split(":", 1)
+        user_id = int(user_id_text)
+    except (ValueError, IndexError):
+        await query.edit_message_text(
+            "❌ Invalid user ID."
+        )
+        return
+
+    user = get_user_by_id(user_id)
+
+    if not user:
+        await query.edit_message_text(
+            "❌ User not found.",
+            reply_markup=admin_back_keyboard(),
+        )
+        return
+
+    if action == "admin_block_user":
+        success = set_user_blocked(user_id, True)
+        message = (
+            "🚫 User Blocked Successfully"
+            if success
+            else "❌ Failed to block user."
+        )
+    else:
+        success = set_user_blocked(user_id, False)
+        message = (
+            "✅ User Unblocked Successfully"
+            if success
+            else "❌ Failed to unblock user."
+        )
+
+    await query.edit_message_text(
+        message,
+        reply_markup=admin_user_keyboard(user_id),
+    )
 
 
 async def show_user_withdrawal_history(

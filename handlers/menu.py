@@ -5,7 +5,7 @@ from telegram import (
 )
 from telegram.ext import ContextTypes
 
-from database.users import get_user
+from database.users import get_user, is_user_blocked
 from handlers.force_join import (
     check_force_join,
     show_force_join,
@@ -48,6 +48,25 @@ async def show_menu(
             await update.message.reply_text(
                 "❌ Account not found.\n\n"
                 "Please use /start first."
+            )
+        return
+
+    if is_user_blocked(user.id):
+        text = (
+            "🚫 *Account Blocked*\n\n"
+            "Your account has been blocked by the administrator.\n"
+            "You cannot use the bot at this time."
+        )
+
+        if update.callback_query:
+            await update.callback_query.edit_message_text(
+                text,
+                parse_mode="Markdown",
+            )
+        else:
+            await update.message.reply_text(
+                text,
+                parse_mode="Markdown",
             )
         return
 

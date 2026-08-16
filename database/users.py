@@ -102,3 +102,16 @@ def get_all_user_ids():
         {},
         {"user_id": 1, "_id": 0},
     )
+
+
+def is_user_blocked(user_id: int) -> bool:
+    user = get_user(user_id)
+    return bool(user and user.get("blocked", False))
+
+
+def set_user_blocked(user_id: int, blocked: bool) -> bool:
+    result = users_collection.update_one(
+        {"user_id": user_id},
+        {"$set": {"blocked": blocked}},
+    )
+    return result.modified_count == 1

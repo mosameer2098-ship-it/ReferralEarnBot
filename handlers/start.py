@@ -6,6 +6,7 @@ from database.users import (
     create_user,
     add_balance,
     increment_referrals,
+    is_user_blocked,
 )
 from handlers.force_join import (
     check_force_join,
@@ -19,6 +20,15 @@ async def start_command(
     context: ContextTypes.DEFAULT_TYPE,
 ):
     user = update.effective_user
+
+    if is_user_blocked(user.id):
+        await update.message.reply_text(
+            "🚫 *Account Blocked*\n\n"
+            "Your account has been blocked by the administrator.\n"
+            "You cannot use the bot at this time.",
+            parse_mode="Markdown",
+        )
+        return
 
     referred_by = None
 

@@ -12,6 +12,7 @@ from database.users import (
     get_user,
     add_balance,
     increment_referrals,
+    is_user_blocked,
 )
 
 
@@ -42,6 +43,15 @@ async def button_callback(
         await query.edit_message_text(
             "❌ Account not found.\n\n"
             "Please use /start first."
+        )
+        return
+
+    if is_user_blocked(user.id):
+        await query.edit_message_text(
+            "🚫 *Account Blocked*\n\n"
+            "Your account has been blocked by the administrator.\n"
+            "You cannot use the bot at this time.",
+            parse_mode="Markdown",
         )
         return
 
