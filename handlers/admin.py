@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -71,6 +72,23 @@ def admin_keyboard():
 
 def get_analytics_text():
     total_users = users_collection.count_documents({})
+
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    seven_days_start = now - timedelta(days=7)
+    thirty_days_start = now - timedelta(days=30)
+
+    today_users = users_collection.count_documents({
+        "created_at": {"$gte": today_start}
+    })
+
+    seven_days_users = users_collection.count_documents({
+        "created_at": {"$gte": seven_days_start}
+    })
+
+    thirty_days_users = users_collection.count_documents({
+        "created_at": {"$gte": thirty_days_start}
+    })
 
     blocked_users = users_collection.count_documents(
         {"blocked": True}
@@ -189,6 +207,10 @@ def get_analytics_text():
         f"👤 Total Users: *{total_users}*\n"
         f"🟢 Active Users: *{active_users}*\n"
         f"🚫 Blocked Users: *{blocked_users}*\n"
+                f"🆕 New Today: *{today_users}*\n"
+                f"📅 New Last 7 Days: *{seven_days_users}*\n"
+                f"🗓 New Last 30 Days: *{thirty_days_users}*\n"
+
         f"👥 Total Referrals: *{total_referrals}*\n\n"
 
         "💰 *BALANCE STATISTICS*\n"
