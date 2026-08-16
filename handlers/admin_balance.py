@@ -191,11 +191,59 @@ async def cancel_add_balance(
     return ConversationHandler.END
 
 
+async def add_balance_existing_user(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    query = update.callback_query
+    await query.answer()
+
+    if query.from_user.id != ADMIN_ID:
+        await query.edit_message_text(
+            "❌ You are not authorized."
+        )
+        return ConversationHandler.END
+
+    try:
+        user_id = int(query.data.split(":", 1)[1])
+    except (ValueError, IndexError):
+        await query.edit_message_text(
+            "❌ Invalid user ID."
+        )
+        return ConversationHandler.END
+
+    user = get_user_by_id(user_id)
+
+    if not user:
+        await query.edit_message_text(
+            "❌ User not found.",
+            reply_markup=admin_back_keyboard(),
+        )
+        return ConversationHandler.END
+
+    context.user_data["admin_balance_user_id"] = user_id
+
+    balance = float(user.get("balance", 0))
+
+    await query.edit_message_text(
+        "➕ Add Balance\n\n"
+        f"👤 User ID: {user_id}\n"
+        f"💰 Current Balance: ₹{balance:g}\n\n"
+        "💵 Ab kitna amount add karna hai?"
+    )
+
+    return AMOUNT
+
+
 add_balance_conversation = ConversationHandler(
     entry_points=[
         CallbackQueryHandler(
             add_balance_start,
             pattern=r"^admin_add_balance$",
+        ),
+        CallbackQueryHandler(
+            add_balance_existing_user,
+            pattern=r"^admin_add_user:[0-9]+$",
         )
     ],
     states={

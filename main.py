@@ -16,6 +16,7 @@ from handlers.admin_callback import admin_callback
 from handlers.admin_balance import add_balance_conversation
 from handlers.admin_deduct import deduct_balance_conversation
 from handlers.broadcast import broadcast_conversation
+from handlers.admin_user import find_user_conversation
 from handlers.commands import balance_command, referrals_command, referral_command, stats_command, history_command
 
 
@@ -73,6 +74,8 @@ def main():
     # Withdrawal conversation
     application.add_handler(withdraw_conversation)
 
+    # Admin Find User conversation
+    application.add_handler(find_user_conversation)
     # Admin callbacks
     application.add_handler(
         CallbackQueryHandler(

@@ -43,6 +43,12 @@ def admin_keyboard():
             ],
             [
                 InlineKeyboardButton(
+                    "🔎 Find User",
+                    callback_data="admin_find_user",
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     "📢 Broadcast",
                     callback_data="admin_broadcast",
                 )
