@@ -97,7 +97,7 @@ def main():
     application.add_handler(
         CallbackQueryHandler(
             admin_callback,
-            pattern=r"^(admin_(withdrawals|history|refresh|back)|approve:[^ ]+|reject:[^ ]+)$",
+            pattern=r"^(admin_(withdrawals|history|analytics|refresh|back)|approve:[^ ]+|reject:[^ ]+)$",
         )
     )
 

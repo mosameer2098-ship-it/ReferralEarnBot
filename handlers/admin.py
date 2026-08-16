@@ -46,7 +46,13 @@ def admin_keyboard():
                     "🔎 Find User",
                     callback_data="admin_find_user",
                 )
-            ],
+                ],
+                [
+                    InlineKeyboardButton(
+                        "📊 Analytics",
+                        callback_data="admin_analytics",
+                    )
+                ],
             [
                 InlineKeyboardButton(
                     "📢 Broadcast",
@@ -60,6 +66,144 @@ def admin_keyboard():
                 )
             ],
         ]
+    )
+
+
+def get_analytics_text():
+    total_users = users_collection.count_documents({})
+
+    blocked_users = users_collection.count_documents(
+        {"blocked": True}
+    )
+
+    active_users = total_users - blocked_users
+
+    referral_result = list(
+        users_collection.aggregate([
+            {
+                "$group": {
+                    "_id": None,
+                    "total": {"$sum": "$referral_count"}
+                }
+            }
+        ])
+    )
+
+    total_referrals = (
+        referral_result[0]["total"]
+        if referral_result
+        else 0
+    )
+
+    balance_result = list(
+        users_collection.aggregate([
+            {
+                "$group": {
+                    "_id": None,
+                    "total": {"$sum": "$balance"}
+                }
+            }
+        ])
+    )
+
+    total_balance = (
+        balance_result[0]["total"]
+        if balance_result
+        else 0
+    )
+
+    earned_result = list(
+        users_collection.aggregate([
+            {
+                "$group": {
+                    "_id": None,
+                    "total": {"$sum": "$total_earned"}
+                }
+            }
+        ])
+    )
+
+    total_earned = (
+        earned_result[0]["total"]
+        if earned_result
+        else 0
+    )
+
+    total_withdrawals = withdrawals_collection.count_documents({})
+
+    pending_withdrawals = withdrawals_collection.count_documents(
+        {"status": "pending"}
+    )
+
+    approved_withdrawals = withdrawals_collection.count_documents(
+        {"status": "approved"}
+    )
+
+    rejected_withdrawals = withdrawals_collection.count_documents(
+        {"status": "rejected"}
+    )
+
+    pending_amount_result = list(
+        withdrawals_collection.aggregate([
+            {"$match": {"status": "pending"}},
+            {
+                "$group": {
+                    "_id": None,
+                    "total": {"$sum": "$amount"}
+                }
+            }
+        ])
+    )
+
+    pending_amount = (
+        pending_amount_result[0]["total"]
+        if pending_amount_result
+        else 0
+    )
+
+    approved_amount_result = list(
+        withdrawals_collection.aggregate([
+            {"$match": {"status": "approved"}},
+            {
+                "$group": {
+                    "_id": None,
+                    "total": {"$sum": "$amount"}
+                }
+            }
+        ])
+    )
+
+    approved_amount = (
+        approved_amount_result[0]["total"]
+        if approved_amount_result
+        else 0
+    )
+
+    return (
+        "╭━━━━━━━━━━━━━━━━━━━━╮\n"
+        "       📊 *ANALYTICS*\n"
+        "╰━━━━━━━━━━━━━━━━━━━━╯\n\n"
+
+        "👥 *USER STATISTICS*\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 Total Users: *{total_users}*\n"
+        f"🟢 Active Users: *{active_users}*\n"
+        f"🚫 Blocked Users: *{blocked_users}*\n"
+        f"👥 Total Referrals: *{total_referrals}*\n\n"
+
+        "💰 *BALANCE STATISTICS*\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"💵 User Balance: *₹{total_balance:g}*\n"
+        f"💎 Total Earned: *₹{total_earned:g}*\n\n"
+
+        "💸 *WITHDRAWAL STATISTICS*\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"📋 Total Requests: *{total_withdrawals}*\n"
+        f"⏳ Pending: *{pending_withdrawals}*\n"
+        f"✅ Approved: *{approved_withdrawals}*\n"
+        f"❌ Rejected: *{rejected_withdrawals}*\n"
+        f"⏳ Pending Amount: *₹{pending_amount:g}*\n"
+        f"✅ Approved Amount: *₹{approved_amount:g}*"
     )
 
 

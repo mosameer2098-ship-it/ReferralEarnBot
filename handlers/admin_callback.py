@@ -61,6 +61,19 @@ async def admin_callback(
         return
 
     # =========================================================
+    # ANALYTICS
+    # =========================================================
+    if data == "admin_analytics":
+        from handlers.admin import get_analytics_text
+
+        await query.edit_message_text(
+            get_analytics_text(),
+            reply_markup=admin_back_keyboard(),
+            parse_mode="Markdown",
+        )
+        return
+
+    # =========================================================
     # PENDING WITHDRAWALS
     # =========================================================
     if data == "admin_withdrawals":
