@@ -16,7 +16,10 @@ from handlers.admin_callback import admin_callback
 from handlers.admin_balance import add_balance_conversation
 from handlers.admin_deduct import deduct_balance_conversation
 from handlers.broadcast import broadcast_conversation
-from handlers.admin_user import find_user_conversation
+from handlers.admin_user import (
+    find_user_conversation,
+    show_user_withdrawal_history,
+)
 from handlers.commands import balance_command, referrals_command, referral_command, stats_command, history_command
 
 
@@ -76,6 +79,12 @@ def main():
 
     # Admin Find User conversation
     application.add_handler(find_user_conversation)
+    application.add_handler(
+        CallbackQueryHandler(
+            show_user_withdrawal_history,
+            pattern=r"^admin_user_history:[0-9]+$",
+        )
+    )
     # Admin callbacks
     application.add_handler(
         CallbackQueryHandler(

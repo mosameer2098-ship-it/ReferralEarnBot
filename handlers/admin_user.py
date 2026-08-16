@@ -10,6 +10,7 @@ from telegram.ext import (
 
 from config import ADMIN_ID
 from database.users import get_user_by_id
+from database.withdrawals import get_user_withdrawals
 
 
 USER_ID = 1
@@ -28,6 +29,13 @@ def admin_user_keyboard(user_id=None):
                 "➖ Deduct Balance",
                 callback_data=f"admin_deduct_user:{user_id}",
             ),
+        ])
+
+        buttons.append([
+            InlineKeyboardButton(
+                "📜 Withdrawal History",
+                callback_data=f"admin_user_history:{user_id}",
+            )
         ])
 
     buttons.append([
@@ -131,6 +139,87 @@ async def receive_user_id(
     )
 
     return ConversationHandler.END
+
+
+async def show_user_withdrawal_history(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    query = update.callback_query
+    await query.answer()
+
+    if query.from_user.id != ADMIN_ID:
+        await query.edit_message_text(
+            "❌ You are not authorized."
+        )
+        return
+
+    try:
+        user_id = int(query.data.split(":", 1)[1])
+    except (ValueError, IndexError):
+        await query.edit_message_text(
+            "❌ Invalid user ID."
+        )
+        return
+
+    withdrawals = list(get_user_withdrawals(user_id, limit=20))
+
+    if not withdrawals:
+        await query.edit_message_text(
+            f"📜 Withdrawal History\n\n"
+            f"👤 User ID: {user_id}\n\n"
+            "📭 No withdrawal requests found.",
+            reply_markup=admin_user_keyboard(user_id),
+        )
+        return
+
+    lines = [
+        "📜 Withdrawal History",
+        "",
+        f"👤 User ID: {user_id}",
+        "",
+    ]
+
+    for index, withdrawal in enumerate(withdrawals, 1):
+        amount = float(withdrawal.get("amount", 0))
+        upi_id = withdrawal.get("upi_id", "N/A")
+        status = withdrawal.get("status", "unknown")
+
+        if status == "pending":
+            status_text = "⏳ Pending"
+        elif status == "approved":
+            status_text = "✅ Approved"
+        elif status == "rejected":
+            status_text = "❌ Rejected"
+        else:
+            status_text = f"⚠️ {status}"
+
+        created_at = withdrawal.get("created_at")
+
+        if created_at:
+            created_text = created_at.strftime(
+                "%d %b %Y • %I:%M %p"
+            )
+        else:
+            created_text = "N/A"
+
+        withdrawal_id = str(
+            withdrawal.get("_id", "N/A")
+        )
+
+        lines.extend([
+            f"#{index} • {status_text}",
+            f"💰 Amount: ₹{amount:g}",
+            f"💳 UPI: {upi_id}",
+            f"📅 Date: {created_text}",
+            f"🆔 ID: {withdrawal_id}",
+            "",
+        ])
+
+    await query.edit_message_text(
+        "\n".join(lines),
+        reply_markup=admin_user_keyboard(user_id),
+    )
 
 
 async def cancel_find_user(
