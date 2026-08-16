@@ -4,6 +4,7 @@ from telegram import (
     InlineKeyboardMarkup,
 )
 from telegram.ext import ContextTypes
+from urllib.parse import quote
 
 from config import BOT_USERNAME, REFERRAL_REWARD
 from database.withdrawals import get_user_withdrawals
@@ -249,11 +250,37 @@ async def button_callback(
             f"https://t.me/{BOT_USERNAME}?start={user.id}"
         )
 
+        share_text = (
+            "🎁 Join this bot and start earning!\n\n"
+            "💰 Earn rewards by inviting friends."
+        )
+
+        share_url = (
+            "https://t.me/share/url?"
+            f"url={quote(referral_link)}&"
+            f"text={quote(share_text)}"
+        )
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "📤 Share & Earn",
+                    url=share_url,
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔙 Back to Dashboard",
+                    callback_data="back_dashboard",
+                )
+            ],
+        ])
+
         await query.edit_message_text(
             "🔗 *Your Referral Link*\n\n"
             f"`{referral_link}`\n\n"
-            "👥 Share this link with your friends.",
-            reply_markup=back_keyboard(),
+            "📤 Tap the button below to share your link.",
+            reply_markup=keyboard,
             parse_mode="Markdown",
         )
 
